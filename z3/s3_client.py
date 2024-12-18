@@ -24,6 +24,7 @@ def list_object_keys(bucket_name: str, prefix: str, exclude_folders: bool = True
             object_keys.extend(_object_keys)
     except Exception as e:
         logger.exception(f"Failed to list objects:\n{e}")
+        raise e
     finally:
         client.close()
 
@@ -52,6 +53,7 @@ def copy_object(
         )
     except Exception as e:
         logger.exception(f"Failed to copy object:\n{e}")
+        raise e
     finally:
         client.close()
 
@@ -63,6 +65,7 @@ def delete_object(bucket_name: str, object_key: str):
         _ = client.delete_object(Bucket=bucket_name, Key=object_key)
     except Exception as e:
         logger.exception(f"Failed to delete object '{bucket_name}/{object_key}':\n{e}")
+        raise e
     finally:
         client.close()
 
@@ -83,7 +86,6 @@ def move_object(
 
 
 def download_object(bucket_name: str, object_key: str, local_path: Path):
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
     client = boto3.Session().client("s3")
 
     try:
@@ -91,6 +93,7 @@ def download_object(bucket_name: str, object_key: str, local_path: Path):
             f"Downloading object '{bucket_name}/{object_key}' to '{local_path}'"
         )
         response = client.get_object(Bucket=bucket_name, Key=object_key)
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
         with open(local_path, "wb") as f:
             for chunk in response["Body"].iter_chunks():
                 f.write(chunk)
@@ -98,12 +101,12 @@ def download_object(bucket_name: str, object_key: str, local_path: Path):
         logger.exception(
             f"Failed to download a object '{bucket_name}/{object_key}':\n{e}"
         )
+        raise e
     finally:
         client.close()
 
 
 def download_folder(bucket_name: str, prefix: str, local_path: Path):
-    os.makedirs(local_path, exist_ok=True)
     object_keys = list_object_keys(bucket_name, prefix)
 
     for object_key in object_keys:
@@ -126,6 +129,7 @@ def put_object(bucket_name: str, object_key: str, local_path: Path):
             client.put_object(Bucket=bucket_name, Key=object_key, Body=file_data)
     except Exception as e:
         logger.exception(f"Failed to upload object '{bucket_name}/{object_key}':\n{e}")
+        raise e
     finally:
         client.close()
 
