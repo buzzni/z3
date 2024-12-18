@@ -9,11 +9,21 @@ from z3 import asyncable
 
 logger = logging.getLogger(__name__)
 
+session = boto3.Session(
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.environ.get("AWS_REGION_NAME"),
+)
+client = session.client("s3")
 
-def list_object_keys(bucket_name: str, prefix: str, exclude_folders: bool = True) -> List[str]:
+
+def list_object_keys(
+    bucket_name: str, prefix: str, exclude_folders: bool = True
+) -> List[str]:
+    if prefix.startswith("/"):
+        raise ValueError("prefix must not start with /")
+
     object_keys = []
-
-    client = boto3.Session().client("s3")
 
     try:
         # paginator 없이 listing 할 경우 최대 1,000 개만 listing 됨.
@@ -40,7 +50,8 @@ def copy_object(
     dest_bucket_name: str,
     dest_object_key: str,
 ):
-    client = boto3.Session().client("s3")
+    if src_object_key.startswith("/") or dest_object_key.startswith("/"):
+        raise ValueError("object_key must not start with /")
 
     try:
         _ = client.copy_object(
@@ -59,7 +70,8 @@ def copy_object(
 
 
 def delete_object(bucket_name: str, object_key: str):
-    client = boto3.Session().client("s3")
+    if object_key.startswith("/"):
+        raise ValueError("object_key must not start with /")
 
     try:
         _ = client.delete_object(Bucket=bucket_name, Key=object_key)
@@ -76,6 +88,9 @@ def move_object(
     dest_bucket_name: str,
     dest_object_key: str,
 ):
+    if src_object_key.startswith("/") or dest_object_key.startswith("/"):
+        raise ValueError("object_key must not start with /")
+
     copy_object(
         src_bucket_name,
         src_object_key,
@@ -86,7 +101,8 @@ def move_object(
 
 
 def download_object(bucket_name: str, object_key: str, local_path: Path):
-    client = boto3.Session().client("s3")
+    if object_key.startswith("/"):
+        raise ValueError("object_key must not start with /")
 
     try:
         logger.info(
@@ -107,6 +123,9 @@ def download_object(bucket_name: str, object_key: str, local_path: Path):
 
 
 def download_folder(bucket_name: str, prefix: str, local_path: Path):
+    if prefix.startswith("/"):
+        raise ValueError("prefix must not start with /")
+
     object_keys = list_object_keys(bucket_name, prefix)
 
     for object_key in object_keys:
@@ -121,7 +140,8 @@ def download_folder(bucket_name: str, prefix: str, local_path: Path):
 
 
 def put_object(bucket_name: str, object_key: str, local_path: Path):
-    client = boto3.Session().client("s3")
+    if object_key.startswith("/"):
+        raise ValueError("object_key must not start with /")
 
     try:
         with open(local_path, "rb") as f:
@@ -135,6 +155,9 @@ def put_object(bucket_name: str, object_key: str, local_path: Path):
 
 
 def put_folder(bucket_name: str, prefix: str, local_path: Path):
+    if prefix.startswith("/"):
+        raise ValueError("prefix must not start with /")
+
     for local_file_path in local_path.rglob("*"):
         if not local_file_path.is_file():
             continue
@@ -145,7 +168,9 @@ def put_folder(bucket_name: str, prefix: str, local_path: Path):
         put_object(bucket_name, s3_key, local_file_path)
 
 
-async def alist_object_keys(bucket_name: str, prefix: str, exclude_folders: bool = True) -> List[str]:
+async def alist_object_keys(
+    bucket_name: str, prefix: str, exclude_folders: bool = True
+) -> List[str]:
     return await asyncable.run_in_executor(
         None,
         list_object_keys,
