@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "z3"
-version = "0.1.3"
+version = "0.1.4"
 description = "Super simple Python AWS S3 Client"
 authors = ["buzzni-wilson <wilson@buzzni.com>"]
 readme = "README.md"
